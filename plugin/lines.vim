@@ -55,19 +55,9 @@ func! SetTabline(...)
     let [ls, rs] = [0, 0]
     while 1
         let [lt, rt] = [ls ? printf(' %d_< ', ls) : '', rs ? printf(' >_%d ', rs) : '']
-        if &columns > s:get_buftext_width(buflist[ls : -rs - 1]) + strwidth(g:tabline_head) + 3 + strwidth(lt . rt)
-            break
-        endif
-        if [l, r] == [0, 0]
-            break
-        endif
-        if l >= r
-            let lt -= 1
-            let ls += 1
-        else
-            let rt -= 1
-            let rs += 1
-        endif
+        if &columns > s:get_buftext_width(buflist[ls : -rs - 1]) + strwidth(g:tabline_head) + 3 + strwidth(lt . rt) | break | endif
+        if [l, r] == [0, 0] | break | endif
+        if l - ls >= r - rs | let ls += 1 | else | let rs += 1 | endif
     endwhile
     let tabline .= ls ? ' %#VimTabNC#' . lt . '%#VimLineSpace#' : ''
     for bufinfo in buflist[ls : -rs - 1]
