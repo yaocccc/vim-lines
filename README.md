@@ -10,7 +10,6 @@ simple statusline & tabline plug of vim & nvim
 default_options
   let g:line_statusline_enable = 1          # statusline on/off
   let g:line_tabline_enable = 1             # tabline    on/off
-  let g:line_tabline_show_time = 1          # tabline    show time on/off
   let g:line_tabline_show_pwd = 1           # tabline    show current path on/off
   let g:line_dclick_interval = 100          # tabline    dclick can close buffer
   let g:line_modi_mark = '+'                # tabline    modified mark
@@ -30,16 +29,9 @@ default_options
                       \  "S": "SELECT",
                       \  "\<c-s>": "SELECT",
                       \  "t": "TERMINAL"}
-
-default_color
-  hi VimLineHead ctermbg=24
-  hi VimLineSpace ctermbg=NONE
-  hi VimTabC ctermbg=25
-  hi VimTabNC ctermbg=238
+  let g:line_powerline_enable = 0          # statusline & tabline show powerline font
 
 ```
-
-![avatar](./screenshots/line2.png)
 
 ```usage
 if you want to add something to you statusline:
@@ -76,7 +68,6 @@ Example:
 默认设置
   let g:line_statusline_enable = 1          # 状态栏 是否开启
   let g:line_tabline_enable = 1             # 标题栏 是否开启
-  let g:line_tabline_show_time = 1          # 标题栏 是否开启时间显示
   let g:line_tabline_show_pwd = 1           # 标题栏 是否展示当前目录名
   let g:line_dclick_interval = 100          # 标题栏 双击的间隔(双击可用于关闭buffer)
   let g:line_modi_mark = '+'                # 标题栏 发生变更的buffer的标记
@@ -96,13 +87,7 @@ Example:
                       \  "S": "SELECT",
                       \  "\<c-s>": "SELECT",
                       \  "t": "TERMINAL"}
-
-默认颜色设置
-  hi LineColor1 ctermbg=24                  # 边上的块的颜色
-  hi LineColor2 ctermbg=238                 # 额外信息的块的颜色 & buffer 列表的颜色
-  hi LineColor3 ctermbg=25                  # 当前buffer块的颜色
-  hi LineColor4 ctermbg=NONE                # 中间间隔的颜色
-
+  let g:line_powerline_enable = 0          # 状态栏 标题栏 展示powerline字体
 ```
 
 ![avatar](./screenshots/line2.png)
