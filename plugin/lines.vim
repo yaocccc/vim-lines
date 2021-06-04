@@ -1,4 +1,4 @@
-if exists('s:loaded') | finish | endif
+" if exists('s:loaded') | finish | endif
 let s:loaded = 1
 
 let g:line_mode_map=get(g:, 'line_mode_map', { "n": "NORMAL", "v": "VISUAL", "V": "V-LINE", "\<c-v>": "V-CODE", "i": "INSERT", "R": "R", "r": "R", "Rv": "V-REPLACE", "c": "CMD-IN", "s": "SELECT", "S": "SELECT", "\<c-s>": "SELECT", "t": "TERMINAL"})
@@ -48,36 +48,33 @@ func! SetTabline(...)
     let [buflist, l, r] = s:get_buf_list()
 
     call add(infos, { 'hl': 'VimLine_Head', 'text': ' %{g:tabline_head} ' })
+    call add(infos, { 'hl': len(buflist) && !buflist[0].iscurrent ? 'VimLine_Head_NC_R' :  'VimLine_Head_C_R', 'text': '' })
+    call add(infos, { 'text': '%<' })
 
-    if len(buflist)
-        call add(infos, { 'hl': buflist[0].iscurrent ? 'VimLine_Head_C_R' :  'VimLine_Head_NC_R', 'text': '' })
-        call add(infos, { 'text': '%<' })
+    let bi = 1
+    for bufinfo in buflist
+        call add(infos, { 'hl': bufinfo.iscurrent ? 'VimLine_C' : 'VimLine_NC', 'text': printf(' %s ', bufinfo.name), 'nr': bufinfo.nr })
 
-        let bi = 1
-        for bufinfo in buflist
-            call add(infos, { 'hl': bufinfo.iscurrent ? 'VimLine_C' : 'VimLine_NC', 'text': printf(' %s ', bufinfo.name), 'nr': bufinfo.nr })
-
-            if bufinfo == buflist[-1]
-                let breakinfo = ''
-                let breakhl = bufinfo.iscurrent ? 'VimLine_C_Space_R' : 'VimLine_NC_Space_R'
+        if bufinfo == buflist[-1]
+            let breakinfo = ''
+            let breakhl = bufinfo.iscurrent ? 'VimLine_C_Space_R' : 'VimLine_NC_Space_R'
+        else
+            if bufinfo.iscurrent == buflist[bi].iscurrent
+                let breakinfo = ''
+                let breakhl = 'VimLine_NC_Break'
             else
-                if bufinfo.iscurrent == buflist[bi].iscurrent
-                    let breakinfo = ''
-                    let breakhl = 'VimLine_NC_Break'
-                else
-                    let breakinfo = ''
-                    let breakhl = bufinfo.iscurrent ? 'VimLine_C_NC_R' : 'VimLine_NC_C_R'
-                endif
+                let breakinfo = ''
+                let breakhl = bufinfo.iscurrent ? 'VimLine_C_NC_R' : 'VimLine_NC_C_R'
             endif
+        endif
 
-            call add(infos, { 'hl': breakhl, 'text': breakinfo })
+        call add(infos, { 'hl': breakhl, 'text': breakinfo })
 
-            let bi += 1
-        endfor
+        let bi += 1
+    endfor
 
-        let bufferswidth = &columns - strwidth(g:tabline_head) - 3
-        let infos = infos[:1] + s:hide_infos_by_column(infos[2:], l, r, bufferswidth)
-    endif
+    let bufferswidth = &columns - strwidth(g:tabline_head) - 3
+    let infos = infos[:1] + s:hide_infos_by_column(infos[2:], l, r, bufferswidth)
 
     call add(infos, { 'hl': 'VimLine_Space'})
 
