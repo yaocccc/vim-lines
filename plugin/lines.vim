@@ -25,7 +25,7 @@ augroup lines
     endif
     if s:line_tabline_enable == 1
         set showtabline=2
-        let g:tabline_Light = s:line_tabline_show_pwd ? nerdfont#get_diricon() . substitute($PWD, '\v(.*/)*', '', 'g') : 'BUFFER'
-        au BufEnter,BufWritePost,TextChanged,TextChangedI * call lines#set_tabline()
+        let g:tabline_dir = s:line_tabline_show_pwd ? nerdfont#get_diricon() . substitute($PWD, '\v(.*/)*', '', 'g') : 'BUFFER'
+        au BufEnter,BufLeave,BufWritePost,TextChanged,TextChangedI * call timer_start(0, 'lines#set_tabline')
     endif
 augroup END

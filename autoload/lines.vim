@@ -10,7 +10,7 @@ func! lines#refresh_statusline()
         if wininfo.winnr == winnr()
             setlocal statusline<
         else
-            call setwinvar(wininfo.winnr, '&statusline', printf('%'. (wininfo.width) .'s', ''))
+            call setwinvar(wininfo.winnr, '&statusline', '%#VimLine_Dark#' . printf('%'. (wininfo.width) .'s', ''))
         endif
     endfor
 endf
@@ -52,17 +52,19 @@ func! lines#set_statusline(...)
 endf
 
 func! lines#set_tabline(...)
-    let infos = []
+    let headinfos = []
     let [buflist, l, r] = s:get_buf_list()
     let isfirst = len(buflist) && buflist[0].iscurrent
 
-    call add(infos, { 'hl': 'VimLine_Light', 'text': ' %{g:tabline_Light} ' })
-    call add(infos, isfirst ? { 'hl': 'VimLine_Light_Break', 'text': '' } : { 'hl': 'VimLine_Light_Dark', 'text': '' })
-    call add(infos, { 'text': '%<' })
+    call add(headinfos, { 'hl': 'VimLine_Light', 'text': ' %{g:tabline_dir} ' })
+    call add(headinfos, isfirst ? { 'hl': 'VimLine_Light_Break', 'text': '' } : { 'hl': 'VimLine_Light_Dark', 'text': '' })
+    call add(headinfos, { 'text': '%<' })
+
+    let bufinfos = []
 
     let bi = 1
     for bufinfo in buflist
-        call add(infos, { 'hl': bufinfo.iscurrent ? 'VimLine_Light' : 'VimLine_Dark', 'text': printf(' %s ', bufinfo.name), 'nr': bufinfo.nr })
+        call add(bufinfos, { 'hl': bufinfo.iscurrent ? 'VimLine_Light' : 'VimLine_Dark', 'text': printf(' %s ', bufinfo.name), 'nr': bufinfo.nr })
 
         if bufinfo == buflist[-1]
             let breakinfo = ''
@@ -77,15 +79,15 @@ func! lines#set_tabline(...)
             endif
         endif
 
-        call add(infos, { 'hl': breakhl, 'text': breakinfo })
+        call add(bufinfos, { 'hl': breakhl, 'text': breakinfo })
 
         let bi += 1
     endfor
 
-    let bufferswidth = &columns - strwidth(g:tabline_Light) - 3
-    let infos = infos[:1] + s:hide_infos_by_column(infos[2:], l, r, bufferswidth)
+    let bufferswidth = &columns - strwidth(g:tabline_dir) - 3
+    let bufinfos = s:hide_bufinfos(bufinfos, l, r, bufferswidth)
 
-    call add(infos, { 'hl': 'VimLine_None'})
+    let infos = headinfos + bufinfos + [{ 'hl': 'VimLine_None'}]
 
     let tabline = ''
     for info in infos
@@ -140,30 +142,103 @@ func! s:get_buf_list()
     return [buflist, l, r]
 endf
 
-func! s:hide_infos_by_column(infos, l, r, columns)
-    let [infos, l, r] = [a:infos, a:l, a:r]
+func! s:hide_bufinfos(bufinfos, l, r, columns)
+    let [bufinfos, l, r] = [a:bufinfos, a:l, a:r]
+
+    " 计算需要隐藏的块的数量
     let [lhidecount, rhidecount] = [0, 0]
     while 1
-        let ltext = lhidecount ? printf(' %d_< ', lhidecount / 2) : ''
-        let rtext = rhidecount ? printf(' >_%d ', rhidecount / 2) : ''
-        let width = s:get_infos_text_width(infos[lhidecount : -rhidecount - 1])
+        let ltext = lhidecount ? ' … ' : ''
+        let rtext = rhidecount ? ' … ' : ''
+        let width = s:get_infos_text_width(bufinfos[2 * lhidecount : -2 * rhidecount - 1])
         let width += lhidecount ? strwidth(ltext) + 1 : 0
         let width += rhidecount ? strwidth(rtext) + 1 : 0
         if a:columns > width | break | endif
-        if l - lhidecount >= r - rhidecount | let lhidecount += 2 | else | let rhidecount += 2 | endif
+        if l - lhidecount >= r - rhidecount | let lhidecount += 1 | else | let rhidecount += 1 | endif
     endwhile
 
-    if rhidecount
-        let infos = infos[:-rhidecount - 1]
-        call add(infos, { 'hl': 'VimLine_Dark', "text": rtext})
-        call add(infos, { 'hl': 'VimLine_Dark_None', 'text': '' })
+    " 有隐藏内容 去掉末尾 
+    if lhidecount || rhidecount
+        let bufinfos = bufinfos[:len(bufinfos)-2]
     endif
 
-    if lhidecount
-        let infos = [{ 'hl': 'VimLine_Dark', "text": ltext}] + infos[lhidecount:]
+    " 左右都隐藏
+    if lhidecount && rhidecount
+        let bufinfos =
+            \ [{ 'hl': 'VimLine_Dark', "text": ltext}, { 'hl': 'VimLine_Dark_Break', 'text': '' }] +
+            \ bufinfos[2 * lhidecount:-2 * rhidecount] +
+            \ [{ 'hl': 'VimLine_Dark', "text": rtext}]
+
+        let emptywidth = a:columns - s:get_infos_text_width(bufinfos)
+        let leftinfo = a:bufinfos[2 * lhidecount - 2]
+        let rightinfo = a:bufinfos[-2 * rhidecount]
+        let pretext = bufinfos[0].text
+        let bufinfos[0].text = ' …' . s:get_str_bycount(leftinfo.text, -emptywidth - 1)
+        let bufinfos[0].nr = leftinfo.nr
+
+        let emptywidth = emptywidth + strwidth(pretext) - strwidth(bufinfos[0].text)
+        let pretext = bufinfos[-1].text
+        let bufinfos[-1].text = s:get_str_bycount(rightinfo.text, emptywidth + 1) . '… '
+        let bufinfos[-1].nr = rightinfo.nr
+
+        let emptywidth = emptywidth + strwidth(pretext) - strwidth(bufinfos[-1].text)
+        if emptywidth > 0
+            let bufinfos[0].text = s:get_str_bycount(bufinfos[0].text, -(strwidth(bufinfos[0].text) - 1))
+            while emptywidth > 0
+                let emptywidth -= 1
+                let bufinfos[0].text = '…' . bufinfos[0].text
+            endwhile
+            let bufinfos[0].text = ' ' . bufinfos[0].text
+        endif
     endif
 
-    return infos
+    " 只有左边隐藏
+    if lhidecount && !rhidecount
+        let bufinfos =
+            \ [{ 'hl': 'VimLine_Dark', "text": ltext}, { 'hl': 'VimLine_Dark_Break', 'text': '' }] +
+            \ bufinfos[2 * lhidecount:]
+
+        let emptywidth = a:columns - s:get_infos_text_width(bufinfos)
+        let leftinfo = a:bufinfos[2 * lhidecount - 2]
+        let pretext = bufinfos[0].text
+        let bufinfos[0].text = ' …' . s:get_str_bycount(leftinfo.text, -emptywidth - 1)
+        let bufinfos[0].nr = leftinfo.nr
+
+        let emptywidth = emptywidth + strwidth(pretext) - strwidth(bufinfos[0].text)
+        if emptywidth > 0
+            let bufinfos[0].text = s:get_str_bycount(bufinfos[0].text, -(strwidth(bufinfos[0].text) - 1))
+            while emptywidth > 0
+                let emptywidth -= 1
+                let bufinfos[0].text = '…' . bufinfos[0].text
+            endwhile
+            let bufinfos[0].text = ' ' . bufinfos[0].text
+        endif
+    endif
+
+    " 只有右边隐藏
+    if !lhidecount && rhidecount
+        let bufinfos =
+            \ bufinfos[:-2 * rhidecount] +
+            \ [{ 'hl': 'VimLine_Dark', "text": rtext}]
+
+        let emptywidth = a:columns - s:get_infos_text_width(bufinfos)
+        let rightinfo = a:bufinfos[-2 * rhidecount]
+        let pretext = bufinfos[-1].text
+        let bufinfos[-1].text = s:get_str_bycount(rightinfo.text, emptywidth + 1) . '… '
+        let bufinfos[-1].nr = rightinfo.nr
+
+        let emptywidth = emptywidth + strwidth(pretext) - strwidth(bufinfos[-1].text)
+        if emptywidth > 0
+            let bufinfos[-1].text = s:get_str_bycount(bufinfos[-1].text, strwidth(bufinfos[-1].text) - 1)
+            while emptywidth > 0
+                let emptywidth -= 1
+                let bufinfos[-1].text .= '…'
+            endwhile
+            let bufinfos[-1].text .= ' '
+        endif
+    endif
+
+    return bufinfos
 endf
 
 func! s:info_to_text(info)
@@ -188,4 +263,21 @@ func! s:get_infos_text_width(infos)
         endif
     endfor
     return width
+endf
+
+func! s:get_str_bycount(str, l)
+    if a:l > 0
+        return strcharpart(a:str, 0, a:l)
+    else
+        let str = ''
+        let i = 0
+        let sindex = strwidth(a:str) - 1
+        while i < -a:l
+            let c = strcharpart(a:str, sindex, 1)
+            let str = (len(c) ? c : '') . str
+            let i += 1
+            let sindex -= 1
+        endwhile
+        return str
+    endif
 endf
